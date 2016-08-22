@@ -106,7 +106,7 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
             var DragMarker = (function (_super) {
                 __extends(DragMarker, _super);
                 function DragMarker(x, y, radius) {
-                    _super.call(this, x, y, radius);
+                    _super.call(this, x, y, radius*4);
                     this.iconPoints = new Array();
                     this.scaledIconPoints = new Array();
                     this.getDragIconPoints(this.iconPoints, 1);
@@ -159,7 +159,7 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                         ctx.lineTo(p.x + this.position.x, p.y + this.position.y);
                     }
                     ctx.closePath();
-                    ctx.fillStyle = 'rgba(255,228,0,1)';
+                    ctx.fillStyle = 'rgba(70,70,70,1)';
                     ctx.fill();
                 };
                 DragMarker.prototype.recalculatePosition = function (bounds) {
@@ -197,7 +197,7 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                     ctx.lineTo(this.position.x, this.position.y);
                     ctx.closePath();
                     ctx.lineWidth = 2;
-                    ctx.strokeStyle = 'rgba(255,228,0,1)';
+                    ctx.strokeStyle = 'rgba(70,70,70,1)';
                     ctx.stroke();
                 };
                 CornerMarker.prototype.drawCornerFill = function (ctx) {
@@ -435,7 +435,7 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                         }
                         this.center.draw(ctx);
                         ctx.lineWidth = 2;
-                        ctx.strokeStyle = 'rgba(255,228,0,1)';
+                        ctx.strokeStyle = 'rgba(70,70,70,1)';
                         ctx.strokeRect(bounds.left, bounds.top, bounds.getWidth(), bounds.getHeight());
                     }
                     else {
