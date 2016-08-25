@@ -9,11 +9,12 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
             touchRadius: "=",
             cropAreaBounds: "=",
             minWidth: "=",
-            minHeight: "="
+            minHeight: "=",
+            enforceCropAspect: "="
         },
         restrict: "A",
         link: function (scope, element, attrs) {
-            var crop;
+            var crop, destroyed = false;
             var __extends = __extends || function (d, b) {
                     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
                     function __() {
@@ -23,6 +24,10 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                     __.prototype = b.prototype;
                     d.prototype = new __();
                 };
+
+            scope.$on('$destroy', function() {
+                destroyed = true;
+            });
 
             var Handle = (function () {
                 function Handle(x, y, radius) {
@@ -380,17 +385,27 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                     this.croppedImage = new Image();
                     this.currentlyInteracting = false;
 
-                    angular.element(window)
-                      .off('mousemove.angular-img-cropper mouseup.angular-img-cropper touchmove.angular-img-cropper touchend.angular-img-cropper')
-                      .on('mousemove.angular-img-cropper', this.onMouseMove.bind(this))
-                      .on('mouseup.angular-img-cropper', this.onMouseUp.bind(this))
-                      .on('touchmove.angular-img-cropper', this.onTouchMove.bind(this))
-                      .on('touchend.angular-img-cropper', this.onTouchEnd.bind(this));
+                    this.enforceCropAspect = scope.enforceCropAspect || !this.keepAspect;
 
-                    angular.element(canvas)
-                      .off('mousedown.angular-img-cropper touchstart.angular-img-cropper')
-                      .on('mousedown.angular-img-cropper', this.onMouseDown.bind(this))
-                      .on('touchstart.angular-img-cropper', this.onTouchStart.bind(this));
+                    if (window.jQuery) {
+                        angular.element(window)
+                            .off('mousemove.angular-img-cropper mouseup.angular-img-cropper')
+                            .on('mousemove.angular-img-cropper', this.onMouseMove.bind(this))
+                            .on('mouseup.angular-img-cropper', this.onMouseUp.bind(this));
+                        angular.element(canvas)
+                            .off('mousedown.angular-img-cropper touchstart.angular-img-cropper  touchmove.angular-img-cropper touchend.angular-img-cropper')
+                            .on('mousedown.angular-img-cropper', this.onMouseDown.bind(this))
+                            .on('touchstart.angular-img-cropper', this.onTouchStart.bind(this))
+                            .on('touchmove.angular-img-cropper', this.onTouchMove.bind(this))
+                            .on('touchend.angular-img-cropper', this.onTouchEnd.bind(this));
+                     } else {
+                        window.addEventListener('mousemove', this.onMouseMove.bind(this));
+                        window.addEventListener('mouseup', this.onMouseUp.bind(this));
+                        canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+                        canvas.addEventListener('touchmove', this.onTouchMove.bind(this), false);
+                        canvas.addEventListener('touchstart', this.onTouchStart.bind(this), false);
+                        canvas.addEventListener('touchend', this.onTouchEnd.bind(this), false);
+                     }
                 }
 
                 ImageCropper.prototype.resizeCanvas = function (width, height) {
@@ -425,7 +440,7 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                             this.drawImageIOSFix(ctx, this.srcImage, 0, 0, this.srcImage.width, this.srcImage.height, 0, this.buffer.height / 2 - h / 2, w, h);
                         }
                         this.buffer.getContext('2d').drawImage(this.canvas, 0, 0, this.canvasWidth, this.canvasHeight);
-                        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                        ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
                         ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
                         ctx.drawImage(this.buffer, bounds.left, bounds.top, Math.max(bounds.getWidth(), 1), Math.max(bounds.getHeight(), 1), bounds.left, bounds.top, bounds.getWidth(), bounds.getHeight());
                         var marker;
@@ -973,6 +988,10 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                     if (!this.srcImage) {
                         throw "Source image not set.";
                     }
+
+                    if(this.enforceCropAspect) {
+                        fillWidth = false;
+                    }
                     if (fillWidth && fillHeight) {
                         var sourceAspect = this.srcImage.height / this.srcImage.width;
                         var canvasAspect = this.canvas.height / this.canvas.width;
@@ -1084,11 +1103,12 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                     return PointPool.instance.borrow(touch.clientX - rect.left, touch.clientY - rect.top);
                 };
                 ImageCropper.prototype.onTouchMove = function (e) {
-                    if (crop.isImageSet()) {
+                    if (!destroyed && crop.isImageSet()) {
                         e.preventDefault();
-                        if (e.touches.length >= 1) {
-                            for (var i = 0; i < e.touches.length; i++) {
-                                var touch = e.touches[i];
+                        var touches = angular.isDefined(e.touches) ? e.touches : e.originalEvent.touches;
+                        if (touches.length >= 1) {
+                            for( var i = 0; i < touches.length; i++) {
+                                var touch = touches[i];
                                 var touchPosition = this.getTouchPos(this.canvas, touch);
                                 var cropTouch = new CropTouch(touchPosition.x, touchPosition.y, touch.identifier);
                                 PointPool.instance.returnPoint(touchPosition);
@@ -1194,8 +1214,9 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                 };
                 ImageCropper.prototype.onTouchEnd = function (e) {
                     if (crop.isImageSet()) {
-                        for (var i = 0; i < e.changedTouches.length; i++) {
-                            var touch = e.changedTouches[i];
+                        var changedTouches = angular.isDefined(e.changedTouches) ? e.changedTouches: e.originalEvent.changedTouches;
+                        for (var i = 0; i < changedTouches.length; i++) {
+                            var touch = changedTouches[i];
                             var dragTouch = this.getDragTouchForID(touch.identifier);
                             if (dragTouch != null) {
                                 if (dragTouch.dragHandle instanceof CornerMarker || dragTouch.dragHandle instanceof DragMarker) {
