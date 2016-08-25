@@ -164,7 +164,7 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                         ctx.lineTo(p.x + this.position.x, p.y + this.position.y);
                     }
                     ctx.closePath();
-                    ctx.fillStyle = 'rgba(70,70,70,1)';
+                    ctx.fillStyle = 'rgba(255,255,255,1)';
                     ctx.fill();
                 };
                 DragMarker.prototype.recalculatePosition = function (bounds) {
